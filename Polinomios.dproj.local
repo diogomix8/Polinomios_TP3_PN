@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2015/09/28 00:03:28.402.pas,C:\Users\Enzo\Documents\RAD Studio\Projects\Unit1.pas=C:\Users\Enzo\Desktop\Polinomios\uInterfazPolinomios.pas</Transaction>
+    <Transaction>2015/09/28 00:03:28.402.dfm,C:\Users\Enzo\Documents\RAD Studio\Projects\Unit1.dfm=C:\Users\Enzo\Desktop\Polinomios\uInterfazPolinomios.dfm</Transaction>
+    <Transaction>2015/09/28 00:03:50.901.dproj,C:\Users\Enzo\Documents\RAD Studio\Projects\Project1.dproj=C:\Users\Enzo\Desktop\Polinomios\Polinomios.dproj</Transaction>
+  </Transactions>
+</BorlandProject>

@@ -1,0 +1,715 @@
+unit uPolinomio;
+
+interface
+  uses
+    SysUtils, Math;
+
+type
+
+  tVector = array of double;
+
+  tPolinomio = class(TObject) // P(x)
+    private
+      grado: integer;
+      coeficientes: array[0..10] of double; // Atributo que contiene todos los coeficientes del polinomio
+    public
+      constructor create();
+      destructor destroy();
+      procedure setGrado(n: integer);
+      function getGrado(): integer;
+      procedure setCoeficientes(coef: array of double);
+      function getCoeficientes(): tVector; // Devuelve el vector de coeficientes
+      procedure setUnCoeficiente(i: integer; x: double); // Asigna el coeficiente x en el indice i
+      function getUnCoeficiente(i: integer): double;    // Devuelve el coeficiente del indice i
+      function formato(): string; // Muestra el polinomio en formato a*x^n + b*x^n-1 + c*x^n-2 + .... + y*x + z
+      procedure copiarEnOtro(otroPolinomio: tPolinomio); // Copia el polinomio en el que se le pasa como parametro
+
+      // Evalua el polinomio en x
+      function evaluar(x: double): double;
+
+      // ------ Division de P(X) por un polinomio de grado 1 -------
+      // Efectua la division con un polinomio lineal donde el coeficiente de grado 1 es igual a 1
+      function horner(n: integer ; b: double): tPolinomio ;
+      // Efectua la division con un polinomio lineal donde el coeficiente de grado 1 es distinto a 1
+      function horner_No_Monomico(Q: tPolinomio ; n: integer ): tPolinomio ;
+      function dividir_grado1(Q: tPolinomio): tPolinomio;
+
+      procedure MultiplicarPorNum( Num : integer);
+
+      // ------ Division de P(X) por un polinomio de grado 2 -------
+      // Efectua la division con un polinomio cuadratico donde el coeficiente de grado 2 es igual a 1
+      function hornerCuadratico_monomico (n:integer; a,b: double): tPolinomio;
+      // Efectua la division con un polinomio cuadratico donde el coeficiente de grado 2 es disitinto a 1
+      function hornerCuadratico_NO_monomico (Q: tPolinomio; n: integer): tPolinomio ;
+      // Devuelve el resto para grado 2
+      function restoGrado2 (Q: tPolinomio) : tPolinomio;
+      // Devuelve un array con 2 componetes, la primera es el resultado de evaluar el polinomio en el punto y la segunda la evaluar la derivada del polinomio en el punto
+      function hornerDoble (x : double): tVector ;
+      function hornerCuadratico (Q: tPolinomio): tPolinomio; // utilizo hornerCuadratico_monomico y hornerCuadratico_NO_monomico
+      function dividir_grado2(Q: tPolinomio): tPolinomio;
+
+      // Devuelve un array con todas las posibles raices enteras del polinomio
+      function raicesEnteras():  tVector;
+
+      // Devuelve un array con todas las posibles raices racionales del polinomio
+      function raicesRacionales():  tVector;
+
+      // Raices
+      function Lagrange() :double;
+      function Laguerre() : double;
+      function CotaNewton(): double;
+
+      // Devuelven las cuatro cotas de las raices, si no existen raices negativas los dos primeros elementos son 0
+      // si no existen raices positivas los 2 ultimos son ceros
+      function cotasRaicesLagrange():  tVector;
+      function cotasRaicesLaguerre():  tVector;
+      function cotasRaicesNewton():  tVector;
+
+      // Dado el x1 inicial y una toleracia del error devuelve una aprox de la raiz mas cercana al x
+      function raizNewton(X1, Error : double):  double;
+
+      // Bairstow
+
+  end;
+
+implementation
+
+constructor tPolinomio.create;
+var
+  i: integer;
+begin
+  grado := -1;
+end;
+
+destructor tPolinomio.destroy;
+begin
+  inherited destroy;
+end;
+
+procedure tPolinomio.setGrado(n: integer);
+var
+  i: integer;
+begin
+  if(n >= 0) then begin
+    grado := n;
+    //SetLength(coeficientes, n + 1); // Asignando tamaño a array dinamico de coeficientes
+  end;
+end;
+
+function tPolinomio.getGrado(): integer;
+begin
+  result := grado;
+end;
+
+procedure tPolinomio.setCoeficientes(coef: array of double);
+var
+  i: integer;
+begin
+  if(getGrado() <> -1) then begin
+    for i := 0 to getGrado() do begin
+      coeficientes[i] := coef[i];
+    end;
+  end;
+end;
+
+function tPolinomio.getCoeficientes(): tVector;
+var
+  c: tVector;
+begin
+  if(getGrado() <> -1) then begin
+    result := c
+  end;
+  result := c;
+end;
+
+procedure tPolinomio.setUnCoeficiente(i: integer; x: double);
+begin
+  coeficientes[i] := x;
+end;
+
+function tPolinomio.getUnCoeficiente(i: integer): double;
+begin
+  result := coeficientes[i];
+end;
+
+function tPolinomio.formato(): string;
+var
+  i: integer;
+  aux: string;
+begin
+  aux := '';
+  for i := getGrado() downto 0 do begin
+    case i of
+      0: aux := aux + FloatToStr(coeficientes[i]);
+      else aux := aux + FloatToStr(coeficientes[i]) + '*X^' + inttostr(i) + ' + ';
+    end;
+  end;
+  result := aux;
+end;
+
+procedure tPolinomio.copiarEnOtro(otroPolinomio: tPolinomio);
+var
+  aux: Tvector;
+  i: integer;
+begin
+  setlength(aux, getGrado() + 1);
+  otroPolinomio.setGrado(getGrado());
+  for i := 0 to getGrado() do
+    aux[i] := getUnCoeficiente(i);
+  otroPolinomio.setCoeficientes(aux);
+end;
+
+function tPolinomio.evaluar(x: double): double;
+var
+  R: double;
+  i: integer ;
+begin
+  R := getUnCoeficiente(getGrado());
+  for i:= (getGrado() - 1) downto 0 do
+    R:= ((R * x) + getUnCoeficiente(i));
+  result := R;
+end;
+
+function tPolinomio.horner(n: integer; b: double): tPolinomio ;
+var
+  C: tPolinomio;
+  cx : tVector ;
+  i: integer;
+  aux: double;
+begin
+  C := tPolinomio.create;
+  SetLength(cx, getGrado() + 1);
+  C.setGrado(getGrado());
+  aux := getUnCoeficiente(n);
+  cx[n - 1] := getUnCoeficiente(n);
+  for i:= (n - 1) downto 1 do begin
+    aux := ((aux * b) + getUnCoeficiente(i));
+    cx[i - 1] := aux;
+  end;
+  C.setGrado(n - 1);
+  C.setCoeficientes(cx);
+  SetLength(cx, 0); // Liberando memoria
+  result := C;
+end;
+
+function tPolinomio.horner_No_Monomico(Q: tPolinomio ; n: integer ): tPolinomio ;
+var
+  C2: tPolinomio ;
+  cx : tVector;
+  i: integer;
+  b: double;
+begin
+  C2:= tPolinomio.create();
+  SetLength(cx, getGrado() + 1);
+  b:= Q.getUnCoeficiente(0) / Q.getUnCoeficiente(1);
+  (horner(n , b * -1)).copiarEnOtro(C2);
+  for i:=0 to C2.getGrado() do
+    cx[i]:=C2.getUnCoeficiente(i) / Q.getUnCoeficiente(1);
+  C2.setCoeficientes(cx);
+  SetLength(cx, 0); // Liberando memoria
+  result:= C2;
+end;
+
+function tPolinomio.dividir_grado1(Q: tPolinomio): tPolinomio;
+begin
+  if (Q.coeficientes[1] = 1) then
+    result:= horner (getGrado(), Q.getUnCoeficiente(0) * -1)
+  else
+    result:= horner_No_Monomico(Q, getGrado());
+end;
+
+procedure tPolinomio.MultiplicarPorNum( Num : integer);
+var
+ i : integer;
+begin
+  for i:=0 to GetGrado() do begin
+    setUnCoeficiente(i, Num * getUncoeficiente(i));
+  end;
+end;
+
+function tPolinomio.hornerCuadratico_monomico (n:integer; a,b: double): tPolinomio;
+var
+  C: tPolinomio;
+  cx : tVector ;
+  i: integer;
+begin
+  C:= tPolinomio.create;
+  setlength(cx,getGrado()+1);
+  cx[n]:= coeficientes [n];
+  cx[n-1] := a* cx[n] + getUnCoeficiente (n-1);
+
+  for i:= n-2 downto 1 do
+    begin
+    cx[i]:= cx[i+1] * a + cx[i+2] * b + getUnCoeficiente (i)
+    end;
+  cx[0]:= cx[2] * b + getUnCoeficiente (0);
+  C.setGrado(n);
+  C.setCoeficientes(cx);
+  SetLength(cx, 0); // Liberando Memoria
+  result:= C
+end;
+
+function tPolinomio.hornerCuadratico_NO_monomico (Q: tPolinomio; n: integer): tPolinomio ;
+var
+  C2: tPolinomio ;
+  cx : tVector;
+  i: integer;
+  a,b: double;
+begin
+  C2:= tPolinomio.create;
+  setlength(cx,getGrado()+1);
+  b:= Q.coeficientes[0] / Q.coeficientes[2];
+  a:= Q.coeficientes[1] / Q.coeficientes[2];
+
+  (hornerCuadratico_monomico (n,a*-1,b*-1)).copiarEnOtro(C2);
+  for i:=0 to C2.getGrado do
+    cx[i]:=C2.coeficientes[i] / Q.coeficientes[2];
+  C2.setCoeficientes(cx);
+  SetLength(cx, 0); // Liberando memoria
+  result:= C2
+end;
+
+function tPOlinomio.restoGrado2 (Q: tPolinomio) : tPolinomio; // devuelve el resto que es de un tipo de Dato tPolinomio
+var
+  C: tPolinomio;
+  cx : tVector ;
+  i: integer;
+begin
+  C:= tPolinomio.create;
+  setlength(cx,2);
+  (hornerCuadratico(Q)).copiarEnOtro(C);  // copio en C el resultado de hornerCuadratico el cual en ese vecto esta metido C(x) y R (x)
+  for i:= 0 to 1 do
+    cx[i]:= C.getUnCoeficiente(i);  // copio en cx solo el Resto que esta en la posicion 0 y 1
+  if cx[1] = 0 then  // pregunto por si la posicion 1 es 0 para no mostrarlo
+    C.setGrado(0)
+  else
+    C.setGrado(1);
+  C.setCoeficientes(cx);
+  SetLength(cx, 0); // Liberando Memoria
+  result:= C;
+end;
+
+function tPolinomio.hornerDoble (x : double): tVector ;
+var
+  P , dP: double;
+  Hn : tVector;
+  i : integer;
+begin
+   P := coeficientes[getGrado()];
+   dP :=0;
+   for i:=getGrado()-1 downto -1 do begin
+    dp:=P + x *dp;
+    P:= coeficientes[i]+x*P;
+   end;
+   SetLength(Hn,2);
+   Hn[0]:=P;
+   Hn[1]:=dP;
+   result:= Hn;
+end;
+
+
+function tPolinomio.hornerCuadratico(Q: tPolinomio): tPolinomio;   //
+begin
+     if (Q.coeficientes[2] = 1) then
+        result:= hornerCuadratico_monomico (grado,Q.coeficientes[1]*-1,Q.coeficientes[0]*-1)
+     else
+        result:= hornerCuadratico_NO_monomico (Q,grado);
+end;
+
+function tPolinomio.dividir_grado2 (Q: tPolinomio) : tPolinomio;  // devuelve C(x) de la division de un Q(x) de grado 2
+var
+  C: tPolinomio;
+  cx : tVector ;
+  i,k: integer;
+begin
+  C:= tPolinomio.create;
+  setlength(cx,getGrado());
+  k:=0;     //para contar la cantidad de coeficientes que tiene C(x)
+
+  (hornerCuadratico(Q)).copiarEnOtro(C); // copio en C el resultado de hornerCuadratico el cual en ese vecto esta metido C(x) y R (x)
+  for i:= 2 to C.getGrado do        // voy copiando de la posicion 2 en adelante para obtener C(x)
+    begin
+    cx[k]:= C.getUnCoeficiente(i);
+    k:= k+1;      //cantidad de coeficientes que tiene C(x)
+    end;
+  C.setGrado(k-1);
+  C.setCoeficientes(cx);
+  SetLength(cx, 0); // Liberando Memoria
+  result:= C;
+
+end;
+
+procedure depura_vector(var V:tVector);
+var
+  i,j,k:integer;
+begin
+  i:=0;
+  while(i<Length(V))do
+    begin
+      j:=i+1;
+      while (j<Length(V))do
+        begin
+          if (V[i]=V[j])then
+            begin
+              for k := j to Length(V)-2 do
+                V[k]:=V[k+1];
+              SetLength(V,Length(V)-1);
+            end
+          else
+            j:=j+1;
+        end;
+      i:=i+1;
+    end;
+end;
+
+function divisores(num:integer):tVector;
+var
+  D:tVector;
+  pd,m:integer;
+begin
+  if (num<>0)then
+    begin
+    m:=num div 2;
+    SetLength(D,2);
+    D[0]:=1;
+    D[1]:=-1;
+    pd:=2;
+    while (pd<=m) do
+    begin
+      if ((num mod pd)=0) then
+        begin
+          SetLength(D,Length(D)+2);
+          D[length(D)-2]:=pd;
+          D[length(D)-1]:=pd*(-1);
+        end;
+      pd:=pd+1;
+    end;
+    SetLength(D,Length(D)+2);
+    D[length(D)-2]:=num;
+    D[length(D)-1]:=num*(-1);
+    result:=D;
+    end
+  else
+    result:=NIL;
+end;
+
+function tPolinomio.raicesEnteras():tVector;
+var aux:tVector;
+begin
+  aux:=divisores(abs(trunc(coeficientes[0])));
+  depura_vector(aux);
+  result :=aux;
+end;
+
+function tPolinomio.raicesRacionales():tVector;
+var
+  p,q,r:tVector;
+  i,j:integer;
+begin
+  p:=raicesEnteras;
+  q:=divisores(abs(trunc(coeficientes[getGrado])));
+  SetLength(r,0);
+  for i := 0 to length(p)-1 do
+    for j := 0 to length(q)-1 do
+      if ((trunc(p[i]) mod trunc(q[j])) <> 0) then   (*p[i]/q[j]<> Trunc(p[i]/q[j])*)
+        begin
+          SetLength(r,length(r)+1);
+          r[length(r)-1]:=RoundTo(p[i]/q[j],-5);
+        end;
+  depura_vector(r);
+  SetLength(p, 0); // Liberando memoria
+  SetLength(q, 0); // Liberando memoria
+  result := r;
+end;
+
+// Devuelve el menor de los negativos, si no hay negativos devuelve el coeficiente de la posicion 0
+function Menor(vector : tVector) : double;  // Devuvle el menor de los negativos, si no hay negativos devuelve el coeficiente de la pos 0
+var
+ i : integer;
+ Menor : double;
+begin
+    Menor := vector[0];
+    for i:=1 to Length(vector) do begin
+        if vector[i] <Menor then
+          Menor := vector[i];
+    end;
+    result := abs(Menor);
+end;
+
+// Devuelve La Posicion del Primer Coeficiente Negativo, si no hay alguno devuelve -1
+function PosPrimerNegativo(v : tVector): integer;  // Devuelve La Poscicion del Primer Coeficiente Negativo, si no hay alguno devuelve -1
+var
+ i : integer;
+ aux : tVector;
+begin
+   i:=0;
+   while (i<=Length(v)) and (v[i] >=0) do
+    i:= i+1;
+   if i<=Length(v) then
+      result := i
+   else
+      result := -1;
+end;
+
+// Funcion que Devuelve la Cota Que se Obtiene Por Lagrange, En caso de Que no se puede Obtener la Cota devuelve 0
+function tPolinomio.Lagrange() : double;
+var
+  i : integer;
+  vector : tVector;
+  b : integer;
+begin
+  SetLength(vector, getGrado()+1);
+  i :=0;
+  if (getUnCoeficiente(getGrado())<0) then
+    MultiplicarPorNum(-1);
+  for i:=0 to getGrado() do
+    vector[i] := getUnCoeficiente(i);
+  while (i <=getGrado()) and (getUnCoeficiente(i)>=0) do
+    i := i+1;
+  if (i<= getGrado()+1) and (getUnCoeficiente(getGrado())<>0) then
+    result := 1 + Power(abs(Menor(vector))/getUnCoeficiente(getGrado()),1/i)
+  else
+    result :=0;
+end;
+
+// Devuele un Tvector con las cotas le la raices, ordenadas de menor a mayor
+// SI LA COTA NO EXISTE XQ NO HAY RAIZ YA SEA POSIT O NEG DEVULVE 0
+function tPolinomio.Laguerre() : double;
+var
+  i, band : integer;
+  vect : tVector;
+  aux : tPolinomio;
+  cota : double;
+  iter : double;
+begin
+  cota := 0;
+  iter := 0;
+  aux := tPolinomio.create();
+  SetLength(vect,getGrado()+1);
+  for i:=0 to getGrado() do begin
+    vect[i] := getUnCoeficiente(i);
+  end;
+  band := PosPrimerNegativo(vect)-1;
+
+  cota :=cota+0.2;
+  if band >=0 then begin
+    if getUnCoeficiente(getGrado() )< 0 then begin
+      for i:=0 to getGrado() do
+        setUnCoeficiente(i,-1*getUnCoeficiente(i));
+    end;
+    while(band<>-2) and (iter <100) do begin
+        aux := horner(getGrado(),cota);
+        for i:=0 to getGrado() do
+          vect[i] := aux.getUnCoeficiente(i);
+        if PosPrimerNegativo(vect)= -1 then
+          band:=-2
+        else
+          cota := cota+0.2;
+          iter:= iter+1;
+    end;
+   end;
+
+  result := cota;
+end;
+
+function tPolinomio.CotaNewton(): double;
+var
+ aux : tPolinomio;
+ vect : tVector;
+ cota : double;
+ i : integer;
+begin
+  cota:=0.2;
+  SetLength(vect,getGrado()+1);
+  if getUnCoeficiente(getGrado)<0 then begin
+    for i:=0 to getGrado() do
+      setUnCoeficiente(i, -1*getUnCoeficiente(i));
+
+  end;
+  i:=0;
+  while( (i<= getGrado()) and (getUnCoeficiente(i)>=0) )do
+    i := i+1;
+  if i> getGrado() then
+    result:=0
+  else begin
+    while evaluar(cota)<=0 do begin
+      cota:= cota+0.5;
+    end;
+    aux  := tPolinomio.create();
+    aux := Horner(getGrado(), cota);
+    while aux.getGrado()>0 do begin
+      if (aux.evaluar(cota)>0 ) then begin
+        aux := aux.Horner(aux.getGrado(),cota);
+      end
+      else begin
+        cota:= cota+0.5;
+      end;
+    end;
+    if aux.evaluar(cota)>0 then
+      result:=cota
+    else
+      result := 0;
+  end;
+end;
+
+procedure primerCambiodeVariable(P :tPolinomio); // Se modela el primer cambio de variables x =1/y Modificado el Polinomio que se recibe
+var
+  aux: tVector;
+  i : integer;
+begin
+  SetLength(aux,P.getGrado()+1);
+  for i:=0 to P.getGrado() do begin
+    aux[i] := P.getUnCoeficiente(P.getGrado()-i);  //* Copiamos en aux el vector de coeficientes Invirtiendo el orden Original
+  end;
+  while(aux[P.getGrado()] = 0) do
+    P.setGrado(P.getGrado()-1);
+  P.setCoeficientes(aux);      // Se asignan los nuevos Coeficientes
+end;
+
+procedure segundoCambiodeVariable(P: tPolinomio);  // Se modela el primer cambio de variables x = -1/y  Modificado el Polinomio que se recibe
+var
+  aux : tVector;
+  i, b: integer;
+begin
+  primerCambiodeVariable(P);          // Utilizamos el primer cambio para invertir el orden
+  SetLength(aux,P.getGrado()+1);
+  for i:=0 to P.getGrado() do begin
+    b:=1;
+    if i mod 2 = 0 then
+      b:=-1;                 // Si el el exponente es impar se multiplica por -1, sino no!!
+    aux[i] := b*P.getUnCoeficiente(i);
+  end;
+  while(aux[P.getGrado()] = 0) do
+    P.setGrado(P.getGrado()-1);
+  P.setCoeficientes(aux);      // Se asignan los nuevos Coeficientes
+end;
+
+procedure TercerCambiodeVariable(P: tPolinomio);  // Se modela el tercer cambio de variables x = -y, Modificado el Polinomio que se recibe
+var
+  aux : tVector;
+  i, b: integer;
+begin
+  SetLength(aux,P.getGrado()+1);
+  for i:=0 to P.getGrado() do begin
+    b:=1;
+    if i mod 2 = 0 then
+      b:=-1;                  // Si el el exponente es impar se multiplica por -1, sino no!!
+    aux[i] := b*P.getUnCoeficiente(i);
+  end;
+  P.setCoeficientes(aux);
+end;
+
+
+// Devuele un Tvector con las cotas le la raices, ordenadas de menor a mayor
+// SI LA COTA NO EXISTE XQ NO HAY RAIZ YA SEA POSIT O NEG DEVULVE 0
+function tPolinomio.cotasRaicesLagrange():  TVector;
+var
+Pol2, Pol3, Pol4 : tPolinomio;
+Cotas :Tvector;
+begin
+  SetLength(Cotas,4);
+  Pol2 := tPolinomio.create;
+  Pol3 := tPolinomio.create;
+  Pol4 := tPolinomio.create;
+  CopiarEnOtro(Pol2);     // Copiamos El Polinomio Para No Perder Los Datos
+  CopiarEnOtro(Pol3);
+  CopiarEnOtro(Pol4);
+  primerCambiodeVariable(Pol2);
+  segundoCambiodeVariable(Pol3);
+  TercerCambiodeVariable(Pol4);
+  Cotas[0]:= -Pol4.Lagrange();        // X[O]tiene la cota negativa mas chica
+  Cotas[1] := -Pol3.Lagrange();      // X[1]tiene la cota negativa mas grande
+  Cotas[2]:= Pol2.Lagrange();      // X[2]tiene la cota positiva mas chica
+  Cotas[3]:= Lagrange();           // X[3]tiene la cota positiva mas grande
+  if Cotas[1]<>0 then
+    Cotas[1] := 1/Cotas[1];
+  if Cotas[2] <> 0 then
+    Cotas[2] := 1/Cotas[2];
+  result :=Cotas;
+end;
+
+function tPolinomio.cotasRaicesLaguerre():  tVector;
+var
+  pol1, pol2, pol3 : tPolinomio;
+  cotas : tVector;
+  aux : double;
+  i : integer;
+begin
+  Pol1 := tPolinomio.create;
+  Pol2 := tPolinomio.create;
+  Pol3 := tPolinomio.create;
+  CopiarEnOtro(Pol1);
+  CopiarEnOtro(Pol2);
+  CopiarEnOtro(Pol3);
+  primerCambiodeVariable(Pol1);
+  segundoCambiodeVariable(pol2);
+  TercerCambiodeVariable(pol3);
+  SetLength(cotas,4);
+  cotas[3] := Laguerre();
+  cotas[2] := Pol1.Laguerre();
+  if cotas[2] <>0 then
+    cotas[2] := 1/cotas[2];
+  cotas[1] := Pol2.Laguerre();
+  if cotas[1]<>0 then
+    cotas[1] := -1/cotas[1];
+  cotas[0] := -Pol3.Laguerre();
+  for i:=0 to 2 do
+    if cotas[i]> cotas[i+1] then begin
+      aux := cotas[i+1];
+      cotas[i+1] := cotas[i];
+      cotas[i] := aux;
+    end;
+  result := cotas;
+end;
+
+function tPolinomio.cotasRaicesNewton():  tVector;
+var
+  Cotas: tVector;
+  Pol2 , Pol3, Pol4 : tPolinomio;
+begin
+  SetLength(Cotas,4);
+  Pol2 := tPolinomio.create;
+  Pol3 := tPolinomio.create;
+  Pol4 := tPolinomio.create;
+  CopiarEnOtro(Pol2);
+  CopiarEnOtro(Pol3);
+  CopiarEnOtro(Pol4);
+  primerCambiodeVariable(Pol2);
+  segundoCambiodeVariable(Pol3);
+  tercerCambiodeVariable(pol4);
+  Cotas[0] := -Pol4.CotaNewton();
+  Cotas[1] := -Pol3.CotaNewton();
+  if Cotas[1]<>0 then
+    Cotas[1] := -1/Cotas[1];
+  Cotas[2] := Pol3.CotaNewton();
+  if Cotas[2] <> 0 then
+    Cotas[2] := 1/cotas[2];
+  Cotas[3] := CotaNewton();
+  result := Cotas;
+end;
+
+function tPolinomio.raizNewton(X1, Error : double):  double;
+var
+ X0: double;
+ Pdp: tVector;
+ iter: integer;
+begin
+  iter := 0;
+  SetLength(Pdp, 2);
+  repeat
+    X0 := X1;
+    Pdp := hornerDoble(X0);
+    if Pdp[1]= 0 then begin
+      iter := 20;
+    end
+    else begin
+      X1 := X0 - (Pdp[0]/Pdp[1]);
+      iter := iter + 1;
+    end;
+  until (abs(X1-X0)<error) or (iter > 200); // Si diverge termina el procedimiento en la iteracion 20
+  result := X1;
+end;
+
+// Implementacion de Bairstow
+
+end.

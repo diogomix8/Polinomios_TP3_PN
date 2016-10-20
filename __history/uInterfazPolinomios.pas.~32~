@@ -1,0 +1,421 @@
+unit uInterfazPolinomios;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, uPolinomio, Menus, ExtCtrls;
+
+type
+  TForm1 = class(TForm)
+    cboxGrado: TComboBox;
+    lblGrado: TLabel;
+    edt10: TEdit;
+    lbl10: TLabel;
+    edt9: TEdit;
+    lbl9: TLabel;
+    edt8: TEdit;
+    lbl8: TLabel;
+    edt7: TEdit;
+    lbl7: TLabel;
+    edt6: TEdit;
+    lbl6: TLabel;
+    edt5: TEdit;
+    lbl5: TLabel;
+    edt4: TEdit;
+    lbl4: TLabel;
+    edt3: TEdit;
+    lbl3: TLabel;
+    edt2: TEdit;
+    lbl2: TLabel;
+    edt1: TEdit;
+    lbl1: TLabel;
+    edt0: TEdit;
+    lbl0: TLabel;
+    btnValidar: TButton;
+    cboxRaicesRacionales: TCheckBox;
+    cboxRaicesEnteras: TCheckBox;
+    lblAyuda: TLabel;
+    btnResultados: TButton;
+    lblPolinomio: TLabel;
+    lblEvaluar: TLabel;
+    edtEvaluar: TEdit;
+    lblMonomio: TLabel;
+    lblMonomioX: TLabel;
+    edtMonomioB: TEdit;
+    edtMonomioA: TEdit;
+    edtBinomioA: TEdit;
+    lblBinomioX2: TLabel;
+    edtBinomioB: TEdit;
+    lblBinomioX: TLabel;
+    edtBinomioC: TEdit;
+    btnModificar: TButton;
+    lblBinomio: TLabel;
+    panelResultados: TPanel;
+    Label1: TLabel;
+    Label2: TLabel;
+    Label3: TLabel;
+    lblResultadoEvaluar: TLabel;
+    Label5: TLabel;
+    lblResultadoDivisionGrado1: TLabel;
+    lblResultadoDivisionGrado2: TLabel;
+    Label8: TLabel;
+    Label9: TLabel;
+    Label10: TLabel;
+    edtResultadoRaicesEnteras: TEdit;
+    edtResultadoRaicesRacionales: TEdit;
+    edtResultadoCotas: TEdit;
+    edtResultadoDivisionGrado2: TEdit;
+    edtResultadoDivisionGrado1: TEdit;
+    edtPolinomio: TEdit;
+    Label6: TLabel;
+    cboxRaicesNewton: TCheckBox;
+    Label12: TLabel;
+    edtResultadoRaicesNewton: TEdit;
+    Label4: TLabel;
+    edtNewtonX0: TEdit;
+    cboxMetodos: TComboBox;
+    Label7: TLabel;
+    edtNewtonError: TEdit;
+    procedure cboxGradoChange(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure btnValidarClick(Sender: TObject);
+    procedure btnModificarClick(Sender: TObject);
+    procedure btnResultadosClick(Sender: TObject);
+    procedure edtResultadoCotasChange(Sender: TObject);
+    procedure cboxRaicesNewtonClick(Sender: TObject);
+  private
+    { Private declarations }
+    function control(): boolean;
+    procedure activarOperaciones();
+    procedure desactivarOperaciones();
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+  edits: array[0..10] of TEdit; // Edits para cargar los coeficientes del polinomio
+  labels: array[0..10] of TLabel;
+  polinomio: tPolinomio; // P(x)
+  vectorCotas: tVector;
+
+implementation
+
+{$R *.dfm}
+
+// Comprueba que cada edit contenga un numero real
+function validaEdit(num: string): boolean;
+var
+  convertNum: double;
+  band: boolean;
+begin
+  band := true;
+  try
+    convertNum := StrToFloat(num);
+  except
+    on Exception do begin
+      band := false;
+    end;
+  end;
+  result := band;
+end;
+
+function validarCoeficientePrincipal(num: string): boolean;
+var
+  auxNum: double;
+  b: boolean;
+begin
+  auxNum := StrToFloat(num);
+  b := true;
+  if(auxNum = 0) then begin
+    b := false;
+  end;
+  result := b;
+end;
+
+// Asignar edits en coeficientes de Polinomio
+procedure asignarEditsPolinomio();
+var
+  i: integer;
+  auxCoef: array[0..10] of double;
+begin
+  for i := 0 to polinomio.getGrado() do begin
+    auxCoef[i] := StrToFloat(edits[i].Text);
+  end;
+  polinomio.setCoeficientes(auxCoef);
+end;
+
+// Controla que el polinomio ingresado sea valido correcto
+function TForm1.control(): boolean;
+var
+  i: integer;
+  flag: boolean;
+begin
+  i := 0;
+  flag := true;
+  while((i <= polinomio.getGrado()) and (validaEdit(edits[i].Text))) do begin
+    i := i + 1;
+  end;
+  if(i <= polinomio.getGrado()) then begin
+    ShowMessage('El coeficiente del termino ' + IntToStr(i) + ' no es un numero real.');
+    FocusControl(edits[i]);
+    flag := false;
+  end else if((polinomio.getGrado() > 0) and (not(validarCoeficientePrincipal(edits[polinomio.getGrado()].Text)))) then begin
+    ShowMessage('El coeficiente principal no puede ser 0.' );
+    FocusControl(edits[polinomio.getGrado]);
+    flag := false;
+  end;
+  result := flag;
+end;
+
+procedure TForm1.activarOperaciones();
+begin
+  cboxRaicesEnteras.Enabled := true;
+  cboxRaicesRacionales.Enabled := true;
+  cboxMetodos.Enabled := true;
+  cboxRaicesNewton.Enabled := true;
+  edtEvaluar.Enabled := true;
+  edtMonomioA.Enabled := true;
+  edtMonomioB.Enabled := true;
+  edtBinomioA.Enabled := true;
+  edtBinomioB.Enabled := true;
+  edtBinomioC.Enabled := true;
+  btnResultados.Enabled := true;
+end;
+
+procedure TForm1.desactivarOperaciones();
+begin
+  cboxRaicesEnteras.Enabled := false;
+  cboxRaicesRacionales.Enabled := false;
+  cboxMetodos.Enabled := false;
+  cboxRaicesNewton.Enabled := false;
+  edtEvaluar.Enabled := false;
+  edtMonomioA.Enabled := false;
+  edtMonomioB.Enabled := false;
+  edtBinomioA.Enabled := false;
+  edtBinomioB.Enabled := false;
+  edtBinomioC.Enabled := false;
+  btnResultados.Enabled := false;
+end;
+
+procedure TForm1.edtResultadoCotasChange(Sender: TObject);
+begin
+
+end;
+
+// Activar edits
+procedure activarEditsCoeficientes();
+var
+  i: integer;
+begin
+  for i := 0 to polinomio.getGrado() do begin
+    edits[i].Enabled := true;
+  end;
+end;
+
+// Desactivar edits
+procedure desactivarEditsCoeficientes();
+var
+  i: integer;
+begin
+  for i := 0 to polinomio.getGrado() do begin
+    edits[i].Enabled := false;
+  end;
+end;
+
+procedure TForm1.btnModificarClick(Sender: TObject);
+begin
+  desactivarOperaciones();
+  activarEditsCoeficientes();
+  btnValidar.Enabled := true;
+  lblAyuda.Caption := 'Necesita validar el polinomio para realizar operaciones.';
+end;
+
+// Mostrar tVector en formato agradable
+function mostrarVector(aux: tVector): string;
+var
+  cad: string;
+  i: integer;
+begin
+  {
+  cad := '[';
+  i := 0;
+  for i := 0 to High(aux) do begin
+    cad := cad + floattostr(aux[i]) + ' ';
+  end;
+  result := cad + ']';
+  }
+  cad  := concat('Raices negativas: [', floattostr(aux[0]), ', ', floattostr(aux[1]), ']');
+  cad := concat(cad, ' - Raices positivas: [', floattostr(aux[0]), ', ', floattostr(aux[1]), ']');
+  result := cad;
+end;
+
+// Determina que metodo de cotas llamar
+function metodoCotas(n: integer): string;
+var
+  aux: tVector;
+begin
+  case n of
+    0: aux := polinomio.cotasRaicesLagrange();
+    1: aux := polinomio.cotasRaicesLaguerre();
+    2: aux := polinomio.cotasRaicesNewton();
+  end;
+  result := mostrarVector(aux);
+end;
+
+procedure TForm1.btnResultadosClick(Sender: TObject);
+var
+  b: boolean;
+  Q: tPolinomio;  // Grado 1
+  T: tPolinomio;  // Grado 2
+
+begin
+  // Comprobar que los edits contengan numeros
+  b := validaEdit(edtEvaluar.Text) and validaEdit(edtMonomioA.Text) and validaEdit(edtMonomioB.Text) and validaEdit(edtBinomioA.Text) and validaEdit(edtBinomioB.Text) and validaEdit(edtBinomioC.Text) and validarCoeficientePrincipal(edtMonomioA.Text) and validarCoeficientePrincipal(edtBinomioA.Text) and validaEdit(edtNewtonX0.Text) and validaEdit(edtNewtonError.Text);
+
+  if(b) then begin
+    panelResultados.Visible := true;
+
+    // MOSTRAR INFORMACION EN EL PANEL RESULTADOS
+
+    // Division por Q(X) = ax + b
+    Q := tPolinomio.create; Q.setGrado(1);
+    // Leyendo coeficientes de edit Q(X)
+    Q.setCoeficientes([StrToFloat(edtMonomioB.Text), StrToFloat(edtMonomioA.Text)]);
+
+    // Mostrando Resultados
+    edtResultadoDivisionGrado1.Text := (polinomio.dividir_grado1(Q)).formato;
+
+    // Division por T(X) = ax^2 + bx + c
+    T := tPolinomio.create; T.setGrado(2);
+    // Leyendo coeficientes de edit T(X)
+    T.setCoeficientes([StrToFloat(edtBinomioC.Text), StrToFloat(edtBinomioB.Text), StrToFloat(edtBinomioA.Text)]);
+
+    // Mostrando Resultados
+    if(polinomio.getGrado() = 1) then begin
+      edtResultadoDivisionGrado2.Text := 'No es posible realizar la division.';
+    end else begin
+      edtResultadoDivisionGrado2.Text := (polinomio.dividir_grado2(T)).formato;
+    end;
+
+    // Evaluar P(X)
+    lblResultadoEvaluar.Caption := 'P(' + edtEvaluar.Text + ')' + ' = ' + floattoStr(polinomio.evaluar(strtofloat(edtEvaluar.Text)));
+
+    // Raices Enteras y Racionales
+    if(cboxRaicesEnteras.Checked) then begin
+      vectorCotas := polinomio.raicesEnteras();
+      edtResultadoRaicesEnteras.Text := mostrarVector(vectorCotas);
+    end else begin
+      edtResultadoRaicesEnteras.Text := 'No selecciono esta opcion.';
+    end;
+
+    if(cboxRaicesRacionales.Checked) then begin
+      vectorCotas := polinomio.raicesRacionales();
+      edtResultadoRaicesRacionales.Text := mostrarVector(vectorCotas);
+    end else begin
+      edtResultadoRaicesRacionales.Text := 'No selecciono esta opcion.';
+    end;
+
+    // Determinar Cotas Positivas y Negativas
+    edtResultadoCotas.Text := metodoCotas(cboxMetodos.ItemIndex);
+
+    if(cboxRaicesNewton.Checked) then begin
+      edtResultadoRaicesNewton.Text := FloatToStr(polinomio.raizNewton(StrToFloat(edtNewtonX0.Text), StrToFloat(edtNewtonError.Text)));
+    end else begin
+      edtResultadoRaicesNewton.Text := 'No selecciono esta opcion.';
+    end;
+
+  end else begin
+    panelResultados.Visible := false;
+    ShowMessage('Se ingresaron datos incorrectos.');
+  end;
+
+end;
+
+procedure TForm1.btnValidarClick(Sender: TObject);
+begin
+  if(control()) then begin
+    btnModificar.Enabled := true; // Activar Boton para modificar polinomio
+    btnValidar.Enabled := false; // Desactivar Boton para validar polinomio
+    asignarEditsPolinomio();
+    lblPolinomio.Visible := true;
+    edtPolinomio.Text := polinomio.formato();
+    // Mostrar operaciones
+    activarOperaciones();
+    // Desactivar edits
+    desactivarEditsCoeficientes();
+    // Cambiar texto lblAyuda
+    lblAyuda.Caption := '';
+
+  end;
+end;
+
+// Metodo para inicializar todos los vectores de nuevo
+procedure limpiarVectores();
+var
+  i: integer;
+begin
+  for i := 0 to 10 do begin
+    edits[i].Visible := false;
+    edits[i].Text := '0';
+    labels[i].Visible := false;
+  end;
+end;
+
+procedure TForm1.cboxGradoChange(Sender: TObject);
+var
+  i, n: integer;
+begin
+  n := StrToInt(cboxGrado.Items.Strings[cboxGrado.ItemIndex]);
+  polinomio.setGrado(n); // Setteando grado polinomio
+
+  limpiarVectores();
+
+  for i := 0 to n do begin
+    edits[i].Visible := true;
+    labels[i].Visible := true;
+  end;
+
+  edits[n].Text := '1';
+  lblAyuda.Visible := true;
+  lblAyuda.Caption := 'Necesita validar el polinomio para realizar operaciones.';
+  desactivarOperaciones();
+  activarEditsCoeficientes();
+  btnModificar.Enabled := false; // Desactivar Boton para modificar polinomio
+  btnValidar.Enabled := true; // Activar Boton para validar polinomio
+
+end;
+
+procedure TForm1.cboxRaicesNewtonClick(Sender: TObject);
+begin
+  if(edtNewtonX0.Enabled) then begin
+    edtNewtonX0.Enabled := false;
+    edtNewtonError.Enabled := false;
+  end else begin
+    edtNewtonX0.Enabled := true;
+    edtNewtonError.Enabled := true;
+  end;
+end;
+
+procedure TForm1.FormCreate(Sender: TObject);
+begin
+  edits[0] := edt0; labels[0] := lbl0;
+  edits[1] := edt1;labels[1] := lbl1;
+  edits[2] := edt2; labels[2] := lbl2;
+  edits[3] := edt3; labels[3] := lbl3;
+  edits[4] := edt4; labels[4] := lbl4;
+  edits[5] := edt5; labels[5] := lbl5;
+  edits[6] := edt6; labels[6] := lbl6;
+  edits[7] := edt7; labels[7] := lbl7;
+  edits[8] := edt8; labels[8] := lbl8;
+  edits[9] := edt9; labels[9] := lbl9;
+  edits[10] := edt10; labels[10] := lbl10;
+
+  cboxMetodos.ItemIndex := 0;
+
+  polinomio := tPolinomio.create;
+
+end;
+
+end.
